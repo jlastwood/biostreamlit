@@ -99,7 +99,7 @@ def main():
          gobutton = st.button ("Analyse Sequence")
          matchcount = 0
          if gobutton:
-           for sid, seq in islice(st.session_state.seq_dict.items(),100000): 
+           for sid, seq in islice(st.session_state.seq_dict.items(),1000000): 
              match = regex.search(seq)
              if match:
               st.write("Found:", sid, match.group(), match.start(), match.span())
