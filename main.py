@@ -1,6 +1,7 @@
 from PIL import Image
 import numpy as np
 import io
+import re
 from Bio.Seq import Seq
 from io import StringIO
 import neatbio as nt
@@ -15,6 +16,10 @@ from fastaframes import to_df
 from scripts.expression import expression
 from scripts.readfasta import readfasta
 from itertools import islice
+
+
+def replacer(m):
+   return f"{m.group(1)}**{m.group(2)}**{m.group(3)}"
 
 def delta(x, y):
     return 0 if x == y else 1
@@ -92,19 +97,42 @@ def main():
         st.subheader("Expression Search")
         st.write("Enter the expression to search.  You can use a simple format like ATCGNWYS.  You can also use [] in the expression, such as [A|C]TC[AC]WYS.  After entering the search press enter, the results of the expression are displayed. ") 
         exp_text = st.text_input("enter Expression to search")
-        regex = expression(exp_text)
-        st.write("This is the regular expression for search", regex)
-        st.write("The number of sequences is ", st.session_state.seq_length, " If the sequences are 0, go to Upload Fasta.  To perform the search, click Analyse Sequence")
+        #  do the work of creating the regex expressions
+        (regex, explength)  = expression(exp_text)
+        st.write("This is the regular expression for search", ", ".join(regex), "has ", len(regex), "iterations and is a length of ", explength)
+        st.write("The number of sequences is ", st.session_state.seq_length, " If the sequences are 0, go to Upload Fasta.  To perform a search, click Analyse Sequence")
+        distance = st.slider("select the distance", max_value = 1000, value=100)
+        stopseq = st.slider("limit sequence search", max_value = 1000000, value=1000000)
         if st.session_state.seq_length > 0:
          gobutton = st.button ("Analyse Sequence")
          matchcount = 0
+         matchmore = 0
          if gobutton:
-           for sid, seq in islice(st.session_state.seq_dict.items(),1000000): 
-             match = regex.search(seq)
+          for regex_part in regex:
+           st.write("search", regex_part)
+           posfirst = regex_part.find(".")
+           for sid, seq in islice(st.session_state.seq_dict.items(),stopseq): 
+             match = re.search(regex_part, seq)
              if match:
-              st.write("Found:", sid, match.group(), match.start(), match.span())
-              matchcount=matchcount+1
-           st.write("Done", matchcount, " matches found")
+              start = match.start()
+              end = match.end()
+              group = match.group()
+              # distance between groups
+              distanceseq = end - start - explength
+              endfirst = start + posfirst
+              startsend = end - explength  
+              if  distanceseq > distance:
+                matchmore=matchmore+1
+              else:
+                st.write("Found:", sid, " start ", match.start(), " span ", match.span(), " distance ", distanceseq, " 1st ", start, endfirst, " 2nd ", startsend, end)
+              highlighted = f"{seq[:start]}**{seq[start:end]}**{seq[end:]}"
+              if  distanceseq < distance and distanceseq > 0:
+                matchcount=matchcount+1
+                st.markdown (highlighted)
+              if "*" not in regex_part and distanceseq == 0:
+                matchcount=matchcount+1
+                st.markdown (highlighted)
+         st.write("Done", matchcount, " matches found and ", matchmore, " found greater than distance ")
  
     elif choice == "DNA":
         st.subheader("DNA Sequence Analysis")
