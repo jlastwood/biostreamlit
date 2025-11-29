@@ -75,18 +75,20 @@ def main():
       st.session_state['seq_length'] = 0
     if 'seq_dict' not in st.session_state:
       st.session_state['seq_dict'] = {}
-    activity = ['Intro', 'Upload Fasta', 'Expression', 'DNA', 'DotPlot', "About"]
+    activity = ['Intro', 'Fasta', 'Expression', 'DNA', 'DotPlot', "About"]
     choice = st.sidebar.selectbox("Select Activity", activity)
     if choice == 'Intro':
         st.subheader("Intro")
-
-    elif choice == 'Upload Fasta':
-        st.subheader("Upload")
+        st.write("An app using the Bioinformatics library to read Fasta files and search for patterns")
+    elif choice == 'Fasta':
+        st.subheader("Upload a Fasta gz File")
+        st.write("Upload a fasta file and read into a session variable for processing.  Remember this is a gz file")
         fasta = st.file_uploader("Upload FASTA File", type=[".gz"])
         if fasta is not None:
             st.session_state.seq_dict = readfasta(fasta)
             st.session_state.seq_length = len(st.session_state.seq_dict)
             st.write(f"Length: {len(st.session_state.seq_dict)}")
+            st.write("The first five sequences with their length")
             for sid, seq in islice(st.session_state.seq_dict.items(),5):
                st.write(f"{sid}: length {len(seq)}")
 
@@ -95,7 +97,7 @@ def main():
 
     elif choice == 'Expression':
         st.subheader("Expression Search")
-        st.write("Enter the expression to search.  You can use a simple format like ATCGNWYS.  You can also use [] in the expression, such as [A|C]TC[AC]WYS.  After entering the search press enter, the results of the expression are displayed. ") 
+        st.write("Enter the expression to search.  You can use a simple format like ATCGNWYS.  You can also use [] in the expression, such as [A|C]TC[AC]WYS.  After entering the search press enter, the results of the expression are displayed. Spances and special characters are ignored. ") 
         exp_text = st.text_input("enter Expression to search")
         #  do the work of creating the regex expressions
         (regex, explength)  = expression(exp_text)
@@ -108,19 +110,19 @@ def main():
          matchcount = 0
          matchmore = 0
          if gobutton:
-          for regex_part in regex:
+          for idx, regex_part in enumerate(regex):
            st.write("search", regex_part)
-           posfirst = regex_part.find(".")
+           posfirst = idx
            for sid, seq in islice(st.session_state.seq_dict.items(),stopseq): 
              match = re.search(regex_part, seq)
              if match:
-              start = match.start()
+              start = match.start() +1
               end = match.end()
               group = match.group()
               # distance between groups
-              distanceseq = end - start - explength
-              endfirst = start + posfirst
-              startsend = end - explength  
+              distanceseq = end - start - explength +1
+              endfirst = start + posfirst 
+              startsend = end - explength +2  
               if  distanceseq > distance:
                 matchmore=matchmore+1
               else:
@@ -128,6 +130,7 @@ def main():
               highlighted = f"{seq[:start]}**{seq[start:end]}**{seq[end:]}"
               if  distanceseq < distance and distanceseq > 0:
                 matchcount=matchcount+1
+                # st.code (seq, language=None, wrap_lines=True)
                 st.markdown (highlighted)
               if "*" not in regex_part and distanceseq == 0:
                 matchcount=matchcount+1
