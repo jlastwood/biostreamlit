@@ -3,6 +3,7 @@ import numpy as np
 import io
 import re
 from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from io import StringIO
 import neatbio as nt
 import neatbio.sequtils as utils
@@ -16,7 +17,23 @@ from fastaframes import to_df
 from scripts.expression import expression
 from scripts.readfasta import readfasta
 from itertools import islice
+from scripts.protein import proteinanal
 
+def seqvalid(seq):
+
+  #seq = 'actgtactgzzoootcga'
+
+  seq = set(seq.lower())
+  IUPAC = ['a','c','g','t','r','y','s','w','k','m','b','d','h','v','n','.','-','i','f','q','l','p','e']
+
+  for char in IUPAC:
+   if char in seq:
+      seq.remove(char)
+  if len(seq) > 0:
+   st.write( 'sequence contains non IUPAC characters')
+   st.write(seq)
+  else:
+   st.write( 'sequence passes check')
 
 def replacer(m):
    return f"{m.group(1)}**{m.group(2)}**{m.group(3)}"
@@ -75,7 +92,7 @@ def main():
       st.session_state['seq_length'] = 0
     if 'seq_dict' not in st.session_state:
       st.session_state['seq_dict'] = {}
-    activity = ['Intro', 'Fasta', 'Expression', 'DNA', 'DotPlot', "About"]
+    activity = ['Intro', 'Fasta', 'Expression', 'Protein', 'DotPlot', "About"]
     choice = st.sidebar.selectbox("Select Activity", activity)
     if choice == 'Intro':
         st.subheader("Intro")
@@ -137,132 +154,41 @@ def main():
                 st.markdown (highlighted)
          st.write("Done", matchcount, " matches found and ", matchmore, " found greater than distance ")
  
-    elif choice == "DNA":
-        st.subheader("DNA Sequence Analysis")
-        fasta = st.file_uploader("Upload FASTA File", type=[".fasta", ".fa"])
+    elif choice == "Protein":
+        st.subheader("Protein Analysis")
+        seqid = st.text_input ("Enter ID Sequence", value = "ID")
+        seq = st.text_area ("Enter DNA Sequence")
+        seqvalid(seq)
+        dna_seq = SeqRecord(
+           Seq(seq),
+           id=seqid,
+           name="seq name",
+           description="seq desc",
+        )
+        if len(seq) > 5:
+          proteinanal(seq)
 
-        if fasta is not None:
-            dna_df = to_df(fasta)
-            st.write(dna_df) 
-
-            stringio0 = io.StringIO(fasta.getvalue().decode("utf-8"))
-            dna_record = SeqIO.parse(stringio0, "fasta")
-            
-            details = st.radio("Details", ("Description", "Sequence"))
-
-            for seq1 in dna_record:
-               dna_seq = seq1.seq
-
-            # Nucleotide Frequencies
-            st.subheader("Nucleotide Frequency")
-            dna_freq = Counter(dna_seq)
-            st.write(dna_freq)
-            adenine_color = st.color_picker("Adenine Color")
-            thymine_color = st.color_picker("thymine Color")
-            guanine_color = st.color_picker("Guanine Color")
-            cytosil_color = st.color_picker("cytosil Color")
-
-            if st.button("Plot Freq"):
-                fig, barlist = plt.subplots()
-                barlist = plt.bar(dna_freq.keys(), dna_freq.values())
-                barlist[2].set_color(adenine_color)
-                barlist[3].set_color(thymine_color)
-                barlist[1].set_color(guanine_color)
-                barlist[0].set_color(cytosil_color)
-
-                st.pyplot(fig)
-
-            st.subheader("DNA Composition")
-            gc_score = utils.gc_content(str(dna_seq))
-            at_score = utils.at_content(str(dna_seq))
-            st.json({"GC Content": gc_score, "AT Content": at_score})
-
-            # Nucleotide Count
-            nt_count = st.text_input(
-                "Enter Nucleotide Here",
-                "Type Nucleotide Alphabet")
-            st.write("Number of {} Nucleotide is ::{}".format(
-                (nt_count), str(dna_seq).count(nt_count)))
-
-            # Protein Synthesis
-            st.subheader("Protein Synthesis")
-            p1 = dna_seq.translate()
-            aa_freq = Counter(str(p1))
-
-            if st.checkbox("Transcription"):
-                st.write(dna_seq.transcribe())
-
-            elif st.checkbox("Translation"):
-                st.write(dna_seq.translate())
-
-            elif st.checkbox("Complement"):
-                st.write(dna_seq.complement())
-
-            elif st.checkbox("AA Frequency"):
-                st.write(aa_freq)
-
-            elif st.checkbox("Plot AA Frequency"):
-                aa_color = st.color_picker("Pick An Amino Acid Color")
-                # barlist = plt.bar(aa_freq.keys(),aa_freq.values(),color=aa_color)
-                # barlist[2].set_color(aa_color)
-                fig, ax = plt.subplots()
-                ax = plt.bar(aa_freq.keys(), aa_freq.values(), color=aa_color)
-                st.pyplot(fig)
-
-            elif st.checkbox("Full Amino Acid Name"):
-                aa_name = str(p1).replace("*", "")
-                aa3 = utils.convert_1to3(aa_name)
-                st.write(aa_name)
-                st.write("=====================")
-                st.write(aa3)
-
-                st.write("=====================")
-                st.write(utils.get_acid_name(aa3))
-
+            #  st.write(dna_seq) 
+            #  streamlit sample blog.jcharistech.com
+            #  details = st.radio("Details", ("Description", "Sequence"))
             # Top Most Common Amino
 
     elif choice == "DotPlot":
         st.subheader("Generate Dot Plot For Two Sequences")
-        seq_file1 = st.file_uploader(
-            "Upload 1st FASTA File", type=[
-                "fasta", "fa"])
-        seq_file2 = st.file_uploader(
-            "Upload 2nd FASTA File", type=[
-                "fasta", "fa"])
 
-        if seq_file1 and seq_file2 is not None:
-            stringio1 = io.StringIO(seq_file1.getvalue().decode("utf-8"))
-            dna_record1 = SeqIO.parse(stringio1, "fasta")
-            stringio2 = io.StringIO(seq_file2.getvalue().decode("utf-8"))
-            dna_record2 = SeqIO.parse(stringio2, "fasta")
-            # st.write(dna_record1.composition)
-            for seq1 in dna_record1:
-               dna_seq1 = seq1.seq
-            for seq2 in dna_record2:
-               dna_seq2 = seq2.seq
-            details = st.radio("Details", ("Description", "Sequence"))
-            if details == "Description":
-              for seq1 in dna_record1:
-                st.write(seq1.description)
-                st.write("=====================")
-              for seq2 in dna_record2:
-                st.write(seq2.description)
-                st.write("=====================")
-            elif details == "Sequence":
-              for seq1 in dna_record1:
-                st.write(seq1.seq)
-                st.write("=====================")
-              for seq2 in dna_record2:
-                st.write(seq2.seq)
-                st.write("=====================")
+        seq1 = st.text_area("Enter sequence 1")
+        seqvalid (seq1)
+        seq2 = st.text_area("Enter sequence 2")
+        seqvalid (seq2)
+        
+        cus_limit = st.slider(
+                "Select Max number of Nucleotide", value=50, max_value=200, min_value=10)
 
-            cus_limit = st.number_input(
-                "Select Max number of Nucleotide", 10, 200, 50)
-            if st.button("Dot Plot"):
+        if st.button("Dot Plot"):
                 st.write(
                     "Comparing the first {} Nucleotide of the Two Sequences".format(cus_limit))
                 fig, ax = plt.subplots()
-                ax = dotplotx(dna_seq1[0:cus_limit], dna_seq2[0:cus_limit])
+                ax = dotplotx(seq1[0:cus_limit], seq2[0:cus_limit])
                 st.pyplot(fig)
 
     elif choice == "About":
