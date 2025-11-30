@@ -8,9 +8,32 @@ import pandas as pd
 import numpy as np
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import streamlit as st
+from collections import Counter
+import requests
 
-def proteinanal(sequence):
+def proteinanal(sequence, seqid):
+  # if the protein is blank we will use an ID
+  # Example UniProt accession ID
+  protein_id = seqid  # Human Hemoglobin subunit alpha
+  if seqid != "ID":
 
+# Query UniProt REST API
+    url = f"https://rest.uniprot.org/uniprotkb/{protein_id}.json"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+      data = response.json()
+    # Extract some fields
+      protein_name = data["proteinDescription"]["recommendedName"]["fullName"]["value"]
+      organism = data["organism"]["scientificName"]
+      sequence = data["sequence"]["value"]
+
+      st.write("Protein Name:", protein_name)
+      st.write("Organism:", organism)
+      st.write("Sequence Length:", len(sequence))
+      st.write("First 50 residues:", sequence[:50])
+    else:
+      st.write("Error fetching data:", response.status_code)
 # -----------------------------
 # Input: protein sequence (one-letter amino acid codes)
 # -----------------------------
@@ -63,17 +86,45 @@ def proteinanal(sequence):
   #plt.show()
   st.pyplot(fig1)
 
-# -----------------------------
-# Hydropathy profile (Kyte-Doolittle)
-# -----------------------------
-#  kd_values = [analysis.protein_scale(window=1, param_dict={'A':1.8,'C':2.5,'D':-3.5,'E':-3.5,'F':2.8,'G':-0.4,'H':-3.2,'I':4.5,'K':-3.9,'L':3.8,'M':1.9,'N':-3.5,'P':-1.6,'Q':-3.5,'R':-4.5,'S':-0.8,'T':-0.7,'V':4.2,'W':-0.9,'Y':-1.3},window=9)[i] for i in range(len(sequence)-8)]
+  hydrophobic = set("AILMFWV")
+  hydrophilic = set("RNDQEKHSTYCGP")
 
-#  fig2, ax2 = plt.subplots(figsize=(12, 6))
-#  ax2.plot(range(1, len(kd_values)+1), kd_values, color="#F58518", lw=2)
-#  ax2.axhline(0, color="black", lw=1, ls="--")
-#  ax2.set_title("Kyte-Doolittle hydropathy (window=9)")
-#  ax2.set_xlabel("Residue index")
-#  ax2.set_ylabel("Hydropathy")
-#  plt.tight_layout()
-  #plt.show()
-#  st.pyplot(fig2)
+  hydrophobic_count = sum(sequence.count(aa) for aa in hydrophobic)
+  hydrophilic_count = sum(sequence.count(aa) for aa in hydrophilic)
+
+  fig2, ax1 = plt.subplots()
+  plt.pie([hydrophobic_count, hydrophilic_count],
+        labels=["Hydrophobic", "Hydrophilic"],
+        autopct="%1.1f%%",
+        colors=["gold", "lightgreen"])
+  plt.title("Hydrophobic vs Hydrophilic Composition")
+#plt.show()
+  st.pyplot(fig2)
+
+  # this function can handle a list but we have only one
+  sequences = [sequence]
+
+  weights = [ProteinAnalysis(seq).molecular_weight() for seq in sequences]
+
+  fig3, ax1 = plt.subplots()
+  plt.hist(weights, bins=10, color="orchid", edgecolor="black")
+  plt.xlabel("Molecular Weight (Da)")
+  plt.ylabel("Count")
+  plt.title("Protein Molecular Weight Distribution")
+#plt.show()
+  st.pyplot(fig3)
+
+# Count amino acids
+  counts = Counter(sequence)
+
+# Plot
+  fig4, ax1 = plt.subplots()
+  plt.bar(counts.keys(), counts.values(), color="skyblue")
+  plt.xlabel("Amino Acid")
+  plt.ylabel("Frequency")
+  plt.title("Amino Acid Frequency in Protein Sequence")
+# plt.show()
+  st.pyplot(fig4)
+
+  hydrophobic = set("AILMFWV")
+  hydrophilic = set("RNDQEKHSTYCGP")

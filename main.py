@@ -156,6 +156,7 @@ def main():
  
     elif choice == "Protein":
         st.subheader("Protein Analysis")
+        st.write("enter a sequence ID from uniproto OR a sequence in the text box")
         seqid = st.text_input ("Enter ID Sequence", value = "ID")
         seq = st.text_area ("Enter DNA Sequence")
         seqvalid(seq)
@@ -165,8 +166,8 @@ def main():
            name="seq name",
            description="seq desc",
         )
-        if len(seq) > 5:
-          proteinanal(seq)
+        if len(seq) > 5 or seqid != "ID":
+          proteinanal(seq, seqid)
 
             #  st.write(dna_seq) 
             #  streamlit sample blog.jcharistech.com
